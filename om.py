@@ -45,9 +45,6 @@ from datetime import datetime
 from dataclasses import dataclass
 from typing import TextIO
 
-from os import environ
-environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
-import pygame as pg
 
 # contains the equation of time for the year 2000
 # and a quick implementation of c's 'struct' data containers
@@ -265,120 +262,6 @@ class GraphicInterface():
     def close(self) -> None: pass
 
 
-# on-screen interface, using pygame
-class CGA_interface(GraphicInterface): #TAG CGA
-    "uses the pygame library for old-school screen management"
-
-    def __init__(self):
-        self.last_pos: tuple[float, float] = (0.0, 0.0)
-        pg.init()
-        if (G.fscrn):
-            pg.display.set_mode()
-            pg.display.toggle_fullscreen()
-            G.maxx, G.maxy = pg.display.get_window_size()
-        else:
-            pg.display.set_mode((G.maxx,G.maxy))
-        self.screen: pg.Surface = pg.display.get_surface()
-        self.screen.fill(G.background or 'white')
-        self.font: pg.font = pg.font.SysFont('consolas', 16)
-        pg.display.set_caption("Sundial")
-        pg.display.flip()
-
-    @staticmethod
-    def gx(x: int):
-        "logical coordinates to screen coordinates"
-        return (G.maxx+1)//2+1 + G.scale*(x + S.addx + S.tmpx)
-    @staticmethod
-    def gy(y: int):
-        "logical coordinates to screen coordinates"
-        return (G.maxy+1)//2+1 - G.scale*(y + S.addy + S.tmpy)
-
-    def line(self, x1, y1, x2, y2):
-        "draw.line(), using current G attributes"
-        p1 = self.gx(x1), self.gy(y1) ; p2 = self.gx(x2), self.gy(y2)
-        pg.draw.line(self.screen, G.color, p1, p2, G.width)
-        self.last_pos = p2
-
-    def line_to(self, x, y):
-        "draw.line() from the last coordinates"
-        pt = self.gx(x), self.gy(y)
-        if (G.pen):
-            pg.draw.line(self.screen, G.color, self.last_pos, pt, G.width)
-        self.last_pos = pt
-        G.pen = ON
-
-    def rect(self, x: int, y: int, w: int, h: int):
-        "draw.rect(), using current G attributes"
-        # position must be on the top left, sizes must be positive
-        top_left = self.gx(x), self.gy(y + h)
-        size = G.scale*(w), G.scale*(h)
-        pg.draw.rect(self.screen, G.color, (top_left, size), G.width)
-
-    def circle(self, cx: int, cy: int, r: int):
-        "draw.circle(), using current G attributes"
-        pt = self.gx(cx), self.gy(cy)
-        pg.draw.circle(self.screen, G.color, pt, r, G.width)
-
-    def marker(self, mx: int, my: int, color: str = '', size: int = 3):
-        "draw.circle(), filled, with optional color override"
-        pt = self.gx(mx), self.gy(my)
-        if not color: color = G.color
-        pg.draw.circle(self.screen, color, pt, size, 0)
-
-    def textbox(self, px: int, py: int, text: list[str]|str):
-        "renders text on a new surface and blits it on the screen"
-        if isinstance(text, list):
-            lines = text.copy()
-        else:
-            lines = text.split('\n')
-        labels: list[pg.Rect] = []
-        width: int = 0
-        height: int = 0
-        line_height = 0
-        for line in lines:
-            label: pg.Surface = self.font.render(line, True, G.color)
-            if not line_height: line_height = label.get_height()
-            if line:
-                if label.get_width() > width: width = label.get_width()
-                height += line_height
-            else:
-                label = None
-                height += line_height//3
-            labels += [label]
-        size = width+6, height+6
-        box = pg.Surface(size).convert()
-        box.fill(G.background or 'white')
-        height = 3
-        for i, label in enumerate(labels):
-            if label:
-                box.blit(label, label.get_rect(topleft=(3, height)))
-                height += line_height
-            else:
-                height += line_height//3
-        pg.draw.rect(box, G.color, ((0,0), size), 1)
-        self.screen.blit(box, box.get_rect(topleft=(px, py)))
-
-    def redraw(self): pg.display.flip()
-
-    def idle(self):
-        "waits for user input (any key) before resuming, or closing"
-        pg.display.flip()
-        try:
-            while True:
-                event = pg.event.wait()
-                if event.type == pg.QUIT:
-                    sys.exit( 1 )
-                if event.type == pg.KEYDOWN:
-                    if event.key == pg.K_ESCAPE or event.unicode == "q":
-                        sys.exit( 1 )
-                    else:
-                        break
-                pg.display.flip()
-        finally: return
-
-    def close(self):
-        "closes the window and releases all memory"
-        pg.display.quit()
 
 
 # text output, SVG format
