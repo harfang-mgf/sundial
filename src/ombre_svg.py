@@ -1,57 +1,20 @@
 # 
 # trace of a shadow in form of a sundial
 # 
-# source : OMBRE.C / Markus Fischer, Genève, décembre 1993
-# 
-# version 1.1 – ported to python, February 2025
-#   mimic c language, awkward
+# ombre.py, truncated for streamlit…
 #
-# version 1.2 – pythonification of the code
-#   elimination of global variables, simplifications, etc.
-#   added SVG output, replacing GLE from the c original
-# 
-__version__ = '1.3 2025-03-05'
+__version__ = '1.3.lw 2025-03-05'
 
-usage: str = """
-ombre - draws a sundial  (Markus Fischer, Feb. 2025)
-parameters:
-    l <ang>  latitude ( + : north ; - : south )
-    g <ang>  longitude ( + : west ; - : east )
-    o <ang>  orientation ( 0 : south, +90° : west ; -90° : east )
-    p <ang>  slope of the wall ( 0 : flat ; 90° : vertical )
-    z <val>  time zone
-    d <val>  perpendicular distance of the style (sets origin)
-    s <val>  length of the style (sets origin)
-    h <val>  horizontal shift of origin
-    v <val>  vertical shift of origin
-    H <val>  width of the wall (origin defaults to left)
-    V <val>  height of the wall (origin defaults to bottom)
-    e <int>  scale (defaults to 1 unit = 200 pixel)
-    n <nam>  writes data files using a base name (max. 4 chars)
-    c        sets all values to zero
-    x|i <#>  excludes|includes one of the six calculations:
-             0|'txt', 1|'std', 2|'ext', 5|'hyp', 4|'teq', 5|'sha'
-    k        'nocturnal' dial (i.e. for a transparent earth :)
-    b        supress bold, e.g. highlights (lines and files)
-    <ang>    all angles are entered in degrees, decimal or deg:min:sec
-             ( -l46.50  ==  -l 46:30  ==  -l 46°30'00.00 )
-    <val>    distances in any consistent unit (but see -e)
-"""
-
-import sys, os, math
+import sys, os
 from math import pi, sin, asin, cos, acos, tan, atan, atan2, \
     radians as rad, degrees as deg
 from datetime import datetime
 from dataclasses import dataclass
 from typing import TextIO
 
-
 # contains the equation of time for the year 2000
 # and a quick implementation of c's 'struct' data containers
-from sundata import sunpos, tropic, kwvals, struct
-
-# from etc.solar_calculator import sunpos as sun, jd2000
-
+from src.sundata import sunpos, tropic, kwvals, struct
 
 # global constants and methods          #TAG global
 tim = lambda        a: a*12/pi          # convert rad -> 24 hours
@@ -220,12 +183,12 @@ class G():                              #TAG G
     # black-and white scheme
     lines: dict[LParam] = dict(
         _pg = LParam(True,  None,     'black'),
-        txt = LParam(True,  'gray', 'black'),
-        std = LParam(True,  'gray', 'black', 1),
-        ext = LParam(True,  'gray', 'black', 1),
-        hyp = LParam(True,  'gray', 'black', 1),
-        teq = LParam(True,  'gray', 'gray', 0, 3),
-        sha = LParam(False, 'gray', 'black'),
+        txt = LParam(True,  'black', 'black'),
+        std = LParam(True,  'darkgreen', 'black', 1),
+        ext = LParam(True,  'darkblue', 'black', 1),
+        hyp = LParam(True,  'darkblue', 'black', 1),
+        teq = LParam(True,  'darkred', 'gray', 0, 3),
+        sha = LParam(False, 'chocolate', 'black'),
     )
 
     active: str = '_pg'                 # active tag
@@ -260,9 +223,6 @@ class GraphicInterface():
     def redraw(self) -> None: pass
     def idle(self) -> None: pass
     def close(self) -> None: pass
-
-
-
 
 # text output, SVG format
 class SVG_interface(GraphicInterface):  #TAG SVG
@@ -398,27 +358,6 @@ shape: list[kwvals] = struct(
     (  0.0,  0.0, -0.1 ),
     (  0.0, -0.1,  0.0 ),
     (  0.0,  0.0,  0.1 ),
-    # [ # wall
-    # ( -0.5,  0.0,  0.0 ),
-    # (  0.0,  0.0,  0.0 ),
-    # (  0.0, -0.5,  0.0 ),
-    # (  0.0,  0.0,  0.0 ),
-    # (  0.0,  0.0,  0.1 ),
-    # ( -0.5,  0.0,  0.1 ),
-    # (  0.0,  0.0,  0.1 ),
-    # (  0.0, -0.5,  0.1 ),
-    # (  0.0,  0.0,  0.1 ),
-    # [ # square
-    # ( -0.1, -0.1,  0.1 ),
-    # ( -0.1,  0.1,  0.1 ),
-    # (  0.1,  0.1,  0.1 ),
-    # (  0.1, -0.1,  0.1 ),
-    # ( -0.1, -0.1,  0.1 ),
-    # ( -0.1, -0.1, -0.1 ),
-    # ( -0.1,  0.1, -0.1 ),
-    # (  0.1,  0.1, -0.1 ),
-    # (  0.1, -0.1, -0.1 ),
-    # ( -0.1, -0.1, -0.1 ),
     ])
 
 def go_to_work():                       #TAG go_to_work()
@@ -473,7 +412,10 @@ def go_to_work():                       #TAG go_to_work()
 
     G.activate()
     GRI: GraphicInterface = SVG_interface()
-    GRI.rect( -S.totx/2-S.addx, -S.toty/2-S.addy, S.totx, S.toty )
+    if S.perp:
+        GRI.rect( -S.totx/2, -S.toty/2, S.totx, S.toty )
+    else:
+        GRI.rect( -S.totx/2-S.addx, -S.toty/2-S.addy, S.totx, S.toty )
     GRI.circle( sin(S.rot)*S.lsty, -cos(S.rot)*S.lsty, 2 )
     GRI.circle( 0, 0, 1 )
     GRI.circle( 0, 0, 7 )
@@ -571,22 +513,6 @@ def go_to_work():                       #TAG go_to_work()
             penup()
         endof_line()
 
-    # # shapes ...
-    # if (output_line( 'sha' )):
-    #     for hour in range(25):
-    #         ah: float = S.ah(hour)
-    #         highlight( hour == 12.0 )
-    #         for l in (sunpos[i] for i in range(0, len(sunpos), 30)):
-    #             S.mark = ON
-    #             shadow( rad(l.decl), ah + rad(l.tequ/4) )
-    #             S.mark = OFF
-    #             for pt in shape:
-    #                 S.set_tmp( pt.x, pt.y, pt.d)
-    #                 shadow( rad(l.decl), ah + rad(l.tequ/4) );
-    #             S.clear_tmp()
-    #             penup()
-    #     endof_line()
-
     # shapes ... better
     if (startof_line( 'sha' )):
         for i in range(-3, 4):
@@ -618,13 +544,6 @@ def go_to_work():                       #TAG go_to_work()
 
 def main():                               #TAG main()
 
-    hour: float                         # hour of the day
-    ah: float                           # ... and angles
-    ao: float                           # angle style-shadow
-    i: int ; l: int
-    a: float ; s: float ; t:float
-
-    get_args()
     S.init()
 
     if (G.scale < 1):
@@ -643,112 +562,10 @@ def main():                               #TAG main()
             sep = '\n')
         exit( 0 )
 
-
     # end • all lines
     go_to_work()
 
 # end main()
-
-# argument parser, ported from c, could probably be pythonized a bit more
-def get_args() -> None:                 #TAG get_args()
-    "handles command-line arguments"
-    
-    from enum import Enum
-
-    def atof(number:str) -> float:
-        try:    return float(number)
-        except: return 0
-    
-    def toggle(arg: str, state: bool) -> bool:
-        "expects one of : '-?' ; '-?+' ; '-?-'"
-        return True if arg[2:]=='+' else False if arg[2:]=='-' else not state
-
-    X = Enum('next', ['NONE', 'ANG', 'TIM', 'VAL', 'INT', 'STR', 'LIN'])
-    expect = X.NONE
-    val: str                            # serves as a variable pointer (!)
-    mode: int
-    m: float
-    i: int
-
-    for a in sys.argv[1:]:
-        if expect == X.NONE and (a[0] == '-' or a[0] == '/'):
-            match a[1:2]:
-                case '?' : print(usage) ; exit( 0 )
-                case '-' : global debug ; debug = True
-                case 'c' : # removes default Geneva demo values
-                    S.lat = S.lon = S.ori = S.slo = S.zon = 0.0
-                    S.totx = S.toty = S.addx = S.addy = 0.0
-                case 'l' : expect = X.ANG ; val = 'lat'
-                case 'g' : expect = X.ANG ; val = 'lon'
-                case 'o' : expect = X.ANG ; val = 'ori'
-                case 'p' : expect = X.ANG ; val = 'slo'
-                case 'z' : expect = X.TIM ; val = 'zon'
-                case 'd' : expect = X.VAL ; val = 'hsty' ; S.perp = ON
-                case 's' : expect = X.VAL ; val = 'style'; S.perp = OFF
-                case 'h' : expect = X.VAL ; val = 'addx'
-                case 'v' : expect = X.VAL ; val = 'addy'
-                case 'H' : expect = X.VAL ; val = 'totx'
-                case 'V' : expect = X.VAL ; val = 'toty'
-
-                case 'e' : expect = X.INT ; val = 'scale'
-                case 'n' : expect = X.STR ; val = 'name'
-                case 'x' : expect = X.LIN; mode = OFF
-                case 'i' : expect = X.LIN; mode = ON
-
-                case 'k' : S.noct = toggle(a, S.noct)
-                case 'b' : S.dohigh = toggle(a, S.dohigh)
-                case 'f' : G.fscrn = toggle(a, G.fscrn)
-                case _ :
-                    print( "unknown argument {} (-? for help)".format(a),
-                           file=sys.stderr )
-                    exit( 1 )
-            a = a[2:]
-
-        if (a):
-            match (expect) :
-                case X.NONE :
-                    if a not in '+-':
-                        print("don't know what to do with {} (-? for help)\n"
-                            .format(a), file=sys.stderr )
-                        exit( 1 )
-                case X.ANG | X.TIM :
-                    ang = 0.0
-                    sign = +1
-                    if a[0] in '+-':
-                        if a[0] == '-': sign = -1
-                        a = a[1:]
-                    m = 1.0
-                    while a:
-                        i = 0
-                        while i<len(a) and a[i] in '0123456789.': i += 1
-                        ang += atof(a[:i]) * m
-                        m = m/60
-                        a = a[i+1:]
-                    if expect == X.ANG: ang = rad(ang)
-                    S.set(val, sign * ang)
-                case X.VAL : S.set(val, atof(a))
-                case X.INT : G.scale = int(atof(a))
-                case X.STR : G.tofile = a ; G.screen = False
-                case X.LIN :
-                    if a in G.lines:
-                        G.lines[a].on = mode
-                    else:
-                        i = int(atof(a))
-                        if (i < 0 or i >= len(G.lines)):
-                            print( "can't {} {}".format(
-                                "include" if mode else "exclude",
-                                a ), file=sys.stderr)
-                            exit( 1 )
-                        G.lines[list(G.lines)[i]].on = mode
-            expect = X.NONE;
-
-    if (expect != X.NONE):
-        print( "unexpected end of args after {}".format(sys.argv[-1]),
-            file=sys.stderr )
-        exit( 1 )
-
-# end get_args()
-
 
 
 def inform() -> list[str]:

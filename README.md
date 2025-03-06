@@ -1,2 +1,6 @@
 # sundial
-Sundial calculations and solar ephemerides 
+Sundial calculations and solar ephemerides
+
+**WORK IN PROGRESS**
+
+
